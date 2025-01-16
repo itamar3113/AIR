@@ -10,8 +10,8 @@ class RCSPlanner(object):
         # make sure that this structure will contain a list of positions (states, numpy arrays) without duplicates
         self.expanded_nodes = []
 
-        self.fine_directions = [(0, -1), (1, 0), (0, 1), (-1, 0), (-1, -1), (-1, 1), (1, 1), (1, -1)]
-        self.coarse_directions = [(0, -2), (2, 0), (0, 2), (-2, 0), (-2, -2), (-2, 2), (2, 2), (2, -2)]
+        self.fine_directions = set([(0, -1), (1, 0), (0, 1), (-1, 0), (-1, -1), (-1, 1), (1, 1), (1, -1)])
+        self.coarse_directions = set([(0, -2), (2, 0), (0, 2), (-2, 0), (-2, -2), (-2, 2), (2, 2), (2, -2)])
 
     def plan(self):
         '''
@@ -37,9 +37,10 @@ class RCSPlanner(object):
                         return  self.reconstruct_path(curr_node.parent)
                     
                     self.expanded_nodes.append(curr_node.state)# TODO:check if its the right location to add the expanded node
-
                     for direction in self.coarse_directions:
                         new_state = curr_node.state + direction
+                        if not self.planning_env.edge_validity_checker(curr_node.state,new_state):
+                            continue
                         new_rank = curr_node.rank + 1
                         new_node = node(new_state, COARSE, curr_node,new_rank)
                         open_heapdict[str(new_state)] = new_node
@@ -49,6 +50,8 @@ class RCSPlanner(object):
                 for direction in self.fine_directions:
                     parant = curr_node.parent
                     new_state = parant.state + direction
+                    if not self.planning_env.edge_validity_checker(parant.state,new_state):
+                            continue
                     open_heapdict[str(new_state)] =  node(new_state, FINE, parant,new_rank)
         
         return np.array(plan)                
@@ -60,11 +63,15 @@ class RCSPlanner(object):
         # YOU DON'T HAVE TO USE THIS FUNCTION!!!
         '''
         path = []
+        report = ReportHandler()
         while node:
             path.append(node.state)  # Append the state
+            report.update(node)
             node = node.parent  # Move to the parent
         path.reverse()
-        print(path)
+        print("path: ",path)
+        print("path len: " ,report.calc_path_length(path))
+        report.print_steps_pesentage()
         return np.array(path)
     
     def get_expanded_nodes(self):
@@ -85,3 +92,30 @@ class node:
     
     def __lt__(self, other):
         return self.rank < other.rank
+
+
+class ReportHandler:
+    def __init__(self):
+        self.path_steps = 0
+        self.fine_steps = 0
+        self.coarse_steps = 0
+
+    def update(self, node):
+        if node.resolution == 0:
+            self.coarse_steps += 1
+        else:
+            self.fine_steps += 1
+        self.path_steps += 1
+
+    def print_steps_pesentage(self):
+        print("num of total steps: ", self.path_steps,"num of fine steps: ", self.fine_steps, "num of coarse steps: ", self.coarse_steps)
+        print("Coarse steps: ", self.coarse_steps / self.path_steps * 100, "%")
+        print("Fine steps: ", self.fine_steps / self.path_steps * 100, "%")
+
+    def calc_path_length(self,path):
+        path_length = 0
+        for i in range(len(path)-1):
+            path_length += np.linalg.norm(path[i+1] - path[i])
+        return path_length
+
+    
