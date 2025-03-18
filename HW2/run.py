@@ -18,20 +18,28 @@ if __name__ == "__main__":
     planning_env = MapEnvironment(json_file=args.map)
 
     # setup the planner
-    if args.planner == 'rcs':
-        planner = RCSPlanner(planning_env=planning_env)
-    elif args.planner == 'rrt':
-        planner = RRTPlanner(planning_env=planning_env, ext_mode=args.ext_mode, goal_prob=args.goal_prob)
-    elif args.planner == 'rrtstar':
-        planner = RRTStarPlanner(planning_env=planning_env, ext_mode=args.ext_mode, goal_prob=args.goal_prob, k=args.k)
-    else:
-        raise ValueError('Unknown planner option: %s' % args.planner);
+
 
     # execute plan
-    plan = planner.plan()
+    total_cost = 0
+    total_time = 0
+    for i in range(10):
+        if args.planner == 'rcs':
+            planner = RCSPlanner(planning_env=planning_env)
+        elif args.planner == 'rrt':
+            planner = RRTPlanner(planning_env=planning_env, ext_mode=args.ext_mode, goal_prob=args.goal_prob)
+        elif args.planner == 'rrtstar':
+            planner = RRTStarPlanner(planning_env=planning_env, ext_mode=args.ext_mode, goal_prob=args.goal_prob,
+                                     k=args.k)
+        else:
+            raise ValueError('Unknown planner option: %s' % args.planner);
+        plan, cost, time = planner.plan()
+        total_cost += cost
+        total_time += time
 
     # visualize the final path with edges or states according to the requested planner.
-    if args.planner == 'rcs':
-        planner.planning_env.visualize_map(plan=plan, expanded_nodes=planner.get_expanded_nodes())
-    else:
-        planner.planning_env.visualize_map(plan=plan, tree_edges=planner.tree.get_edges_as_states())
+        if args.planner == 'rcs':
+            planner.planning_env.visualize_map(plan=plan, expanded_nodes=planner.get_expanded_nodes())
+        else:
+            planner.planning_env.visualize_map(plan=plan, tree_edges=planner.tree.get_edges_as_states())
+    print(f'Cost: {total_cost / 10}, Time: {total_time / 10}')
